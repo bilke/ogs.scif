@@ -1,7 +1,7 @@
-Bootstrap: localimage
-From: centos7.simg
+Bootstrap: docker
+From: centos:7
 
-# sudo singularity build ogs.centos7.simg centos7/Singularity
+# sudo singularity build ogs.simg Singularity
 
 %environment
   PATH=/opt/conda/bin:$PATH
@@ -9,12 +9,19 @@ From: centos7.simg
   source /scif/apps/devtools-4/scif/environment.sh
 
 %files
-  centos7/devtools-4.scif devtools-4.scif
-  centos7/ogs-base.scif ogs-base.scif
+  devtools-4.scif
+  ogs-base.scif
 
 %post
+  yum install -y wget bzip2 git curl
+  wget --quiet https://repo.continuum.io/miniconda/Miniconda3-4.3.31-Linux-x86_64.sh -O ~/miniconda.sh
+  /bin/bash ~/miniconda.sh -b -p /opt/conda
+  rm -f ~/miniconda.sh
+  /opt/conda/bin/conda clean -tipsy
+
+  /opt/conda/bin/pip install scif
   /opt/conda/bin/scif install /devtools-4.scif
   /opt/conda/bin/scif install /ogs-base.scif
 
 %runscript
-  /opt/conda/bin/scif "$@"
+  scif "$@"
