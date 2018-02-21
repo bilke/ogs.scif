@@ -1,0 +1,6 @@
+%appinstall ogs-base
+  yum -y install epel-release make
+  yum -y install git
+  curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.rpm.sh | bash
+  yum -y install git-lfs
+  /opt/conda/bin/pip install cmake conan ninja

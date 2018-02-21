@@ -1,0 +1,20 @@
+Bootstrap: localimage
+From: centos7.simg
+
+# sudo singularity build ogs.centos7.simg centos7/Singularity
+
+%environment
+  PATH=/opt/conda/bin:$PATH
+  export PATH
+  source /scif/apps/devtools-4/scif/environment.sh
+
+%files
+  centos7/devtools-4.scif devtools-4.scif
+  centos7/ogs-base.scif ogs-base.scif
+
+%post
+  /opt/conda/bin/scif install /devtools-4.scif
+  /opt/conda/bin/scif install /ogs-base.scif
+
+%runscript
+  /opt/conda/bin/scif "$@"

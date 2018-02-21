@@ -1,0 +1,20 @@
+Bootstrap: docker
+From: centos:7 
+
+# sudo singularity build centos7 centos7/scif/Singularity
+
+%environment
+  PATH=/opt/conda/bin:$PATH
+  export PATH
+
+%post
+  yum install -y wget bzip2 git curl
+  wget --quiet https://repo.continuum.io/miniconda/Miniconda3-4.3.31-Linux-x86_64.sh -O ~/miniconda.sh
+  /bin/bash ~/miniconda.sh -b -p /opt/conda
+  rm -f ~/miniconda.sh
+  /opt/conda/bin/conda clean -tipsy
+
+  /opt/conda/bin/pip install scif
+
+%runscript
+  exec scif "$@"
