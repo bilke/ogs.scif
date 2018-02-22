@@ -1,0 +1,68 @@
+%appinstall devtools-4
+  yum install -y centos-release-scl-rh
+  INSTALL_PKGS="devtoolset-4-gcc devtoolset-4-gcc-c++ devtoolset-4-gcc-gfortran devtoolset-4-gdb"
+  yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS
+  rpm -V $INSTALL_PKGS
+  yum clean all -y
+
+%appenv devtools-4
+  CC=/opt/rh/devtoolset-4/root/bin/gcc
+  CXX=/opt/rh/devtoolset-4/root/bin/g++
+  LD_LIBRARY_PATH=/opt/rh/devtoolset-4/root/usr/lib/gcc/x86_64-redhat-linux/5.3.1:$LD_LIBRARY_PATH
+  export CC CXX LD_LIBRARY_PATH
+
+# ----------------------------------------------------------------------------------
+
+%appenv mpi-2_1_1
+  CC=$SCIF_APPS/mpi-2_1_1/bin/mpicc
+  CXX=$SCIF_APPS/mpi-2_1_1/bin/mpic++
+  export CC CXX
+
+%appinstall mpi-2_1_1
+  source $SCIF_APPENV_devtools_4
+  yum -y install make perl
+  curl -L https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.1.tar.gz -O
+  tar xf openmpi-2.1.1.tar.gz
+  cd openmpi-2.1.1
+  ./configure --prefix=$SCIF_APPROOT
+  make -j $(nproc)
+  make install
+  $SCIF_APPROOT/bin/mpicc examples/ring_c.c -o ring
+  cp ./ring $SCIF_APPROOT/bin
+  $SCIF_APPROOT/bin/mpicc examples/hello_c.c -o hello
+  cp ./hello $SCIF_APPROOT/bin
+
+# ----------------------------------------------------------------------------------
+
+%appenv ogs-base
+  source $SCIF_APPENV
+  source $SCIF_APPENV_devtools_4
+
+%appinstall ogs-base
+  yum -y install epel-release make mesa-libGL-devel # for building VTK locally with Conan
+  yum -y install git
+  curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.rpm.sh | bash
+  yum -y install git-lfs
+  /opt/conda/bin/pip install cmake conan ninja
+
+# ----------------------------------------------------------------------------------
+
+%appenv ogs-petsc
+  #PATH=/opt/conda/bin:$PATH
+  #export PATH
+  #source /scif/apps/mpi-2_1_1/scif/environment.sh
+  source $SCIF_APPENV_mpi-2_1_1
+
+%appinstall ogs-petsc
+  PATH=/opt/conda/bin:$PATH
+  source $SCIF_APPENV_mpi_2_1_1
+  echo $CC
+  echo $CXX
+  git lfs clone --branch singularity --depth=1 https://github.com/bilke/ogs || echo "Source already cloned"
+  (cd ogs && git fetch --tags)
+  rm -rf build && mkdir build && cd build
+  cmake ../ogs -G Ninja -DCMAKE_BUILD_TYPE=Release -DOGS_USE_CONAN=ON -DCMAKE_INSTALL_PREFIX=$SINGULARITY_APPROOT -DOGS_USE_PETSC=ON
+  ninja install
+
+%apprun ogs-petsc
+  exec $SCIF_APPBIN/ogs "$@"
