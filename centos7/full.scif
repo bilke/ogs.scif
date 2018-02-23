@@ -1,3 +1,8 @@
+%appenv conda
+  export PATH=/opt/conda/bin:$PATH
+
+# ----------------------------------------------------------------------------------
+
 %appinstall devtools-4
   yum install -y centos-release-scl-rh
   INSTALL_PKGS="devtoolset-4-gcc devtoolset-4-gcc-c++ devtoolset-4-gcc-gfortran devtoolset-4-gdb"
@@ -16,7 +21,8 @@
 %appenv mpi-2_1_1
   CC=$SCIF_APPS/mpi-2_1_1/bin/mpicc
   CXX=$SCIF_APPS/mpi-2_1_1/bin/mpic++
-  export CC CXX
+  PATH=$SCIF_APPS/mpi-2_1_1/bin:$PATH
+  export CC CXX PATH
 
 %appinstall mpi-2_1_1
   source $SCIF_APPENV_devtools_4
@@ -35,34 +41,38 @@
 # ----------------------------------------------------------------------------------
 
 %appenv ogs-base
-  source $SCIF_APPENV
+  source $SCIF_APPENV_conda
   source $SCIF_APPENV_devtools_4
+  export CONAN_USER_HOME=/opt/conan
 
 %appinstall ogs-base
   yum -y install epel-release make mesa-libGL-devel # for building VTK locally with Conan
   yum -y install git
   curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.rpm.sh | bash
   yum -y install git-lfs
-  /opt/conda/bin/pip install cmake conan ninja
+  source $SCIF_APPENV_conda
+  pip install cmake conan ninja
+  export CONAN_USER_HOME=/opt/conan
+  mkdir -p $CONAN_USER_HOME
+  chmod 777 $CONAN_USER_HOME
 
 # ----------------------------------------------------------------------------------
 
 %appenv ogs-petsc
-  #PATH=/opt/conda/bin:$PATH
-  #export PATH
-  #source /scif/apps/mpi-2_1_1/scif/environment.sh
-  source $SCIF_APPENV_mpi-2_1_1
+  source $SCIF_APPENV_ogs_base
+  source $SCIF_APPENV_mpi_2_1_1
 
 %appinstall ogs-petsc
-  PATH=/opt/conda/bin:$PATH
+  source $SCIF_APPENV_ogs_base
   source $SCIF_APPENV_mpi_2_1_1
-  echo $CC
-  echo $CXX
+  export PATH=/scif/apps/mpi-2_1_1/bin:$PATH 
+  
   git lfs clone --branch singularity --depth=1 https://github.com/bilke/ogs || echo "Source already cloned"
   (cd ogs && git fetch --tags)
   rm -rf build && mkdir build && cd build
-  cmake ../ogs -G Ninja -DCMAKE_BUILD_TYPE=Release -DOGS_USE_CONAN=ON -DCMAKE_INSTALL_PREFIX=$SINGULARITY_APPROOT -DOGS_USE_PETSC=ON
+  cmake ../ogs -G Ninja -DCMAKE_BUILD_TYPE=Release -DOGS_USE_CONAN=ON -DCMAKE_INSTALL_PREFIX=$SCIF_APPROOT -DOGS_USE_PETSC=ON
   ninja install
+  rm -r * # cleanup
 
 %apprun ogs-petsc
   exec $SCIF_APPBIN/ogs "$@"
